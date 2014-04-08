@@ -1,6 +1,6 @@
 You can get Go Programming Language [here](http://golang.org)
 
-General Intro to [go and workspaces](https://www.youtube.com/watch?v=XCsL89YtqCs)
+General intro to [go and workspaces](https://www.youtube.com/watch?v=XCsL89YtqCs)
 
 This code uses [ampq library](https://github.com/streadway/amqp)
 
