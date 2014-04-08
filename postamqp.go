@@ -14,9 +14,9 @@ import (
 var (
 	portFlag       = flag.Int("port", 8100, "Port on which to listen for HTTP requests.")
 	addrFlag       = flag.String("address", "", "Address on which to listen for HTTP requests.")
-	mqURIFlag      = flag.String("mqURI", "", "[REQUIRED] URI of the Rabbit MQ.")
+	mqURIFlag      = flag.String("mqURI", "", "[REQUIRED] URI of the Rabbit MQ. (e.g. amqp://<host>:<port>)")
 	exchangeFlag   = flag.String("exchange", "", "Rabbit MQ exchange.")
-	routingKeyFlag = flag.String("routingKey", "bundler", "Rabbit MQ routingKey.")
+	routingKeyFlag = flag.String("routingKey", "somequeue", "Rabbit MQ routingKey.")
 )
 
 func usage() {
@@ -37,11 +37,6 @@ func processRequest(req *http.Request) (err error) {
 	if err != nil {
 		return
 	}
-	//declare queue if it does not exists -- remove this in production?
-	_, err = channel.QueueDeclare(*routingKeyFlag, false, false, false, false, nil)
-	if err != nil {
-		return
-	}
 
 	channel.Publish(
 		*exchangeFlag,
@@ -53,7 +48,7 @@ func processRequest(req *http.Request) (err error) {
 			ContentType:     req.Header.Get("Content-Type"),
 			ContentEncoding: "UTF-8", //TODO change
 			Body:            buffer,
-			DeliveryMode:    amqp.Transient,
+			DeliveryMode:    amqp.Persistent,
 			Priority:        0,
 		},
 	)
