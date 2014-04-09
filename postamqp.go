@@ -17,6 +17,7 @@ var (
 	mqURIFlag      = flag.String("mqURI", "", "[REQUIRED] URI of the Rabbit MQ. (e.g. amqp://<host>:<port>)")
 	exchangeFlag   = flag.String("exchange", "", "Rabbit MQ exchange.")
 	routingKeyFlag = flag.String("routingKey", "somequeue", "Rabbit MQ routingKey.")
+    exchangeType   = flag.String("exchange-type", "direct", "Exchange type - direct|fanout|topic|x-custom")
 )
 
 func usage() {
@@ -37,12 +38,23 @@ func processRequest(req *http.Request) (err error) {
 	if err != nil {
 		return
 	}
-
+    err = channel.ExchangeDeclare(
+        *exchangeFlag, // name
+        *exchangeType, // type
+        true,         // durable
+        false,        // auto-deleted
+        false,        // internal
+        false,        // noWait
+        nil,          // arguments
+    )
+	if err != nil {
+		return
+	}
 	channel.Publish(
 		*exchangeFlag,
 		*routingKeyFlag,
-		false,
-		false,
+		false,  // mandatory
+		false,  // immediate
 		amqp.Publishing{
 			Headers:         amqp.Table{},
 			ContentType:     req.Header.Get("Content-Type"),
@@ -58,18 +70,24 @@ func processRequest(req *http.Request) (err error) {
 
 func MyServer(w http.ResponseWriter, req *http.Request) {
 	var err error
-	respCode := 200
-	respStatus := "OK"
+    respCode := http.StatusNotImplemented
+    respStatus := "sorry"
+    log.Printf("method %s", req.Method)
 	if req.Method == "POST" || req.Method == "PUT" || req.Method == "PATCH" {
 		err = processRequest(req)
-	}
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		respCode = http.StatusInternalServerError
-		respStatus = err.Error()
-	} else {
-		io.WriteString(w, "OK\n")
-	}
+        if err != nil {
+            respCode = http.StatusInternalServerError
+            respStatus = err.Error()
+        } else {
+            respCode = 200
+            respStatus = "OK"
+        }
+    }
+    if respCode == 200 {
+        io.WriteString(w, "OK\n")
+    } else {
+        http.Error(w, respStatus, respCode)
+    }
 	log.Printf("%s %s %s %s %s %d %s", req.RemoteAddr, req.Header.Get("User-Agent"), req.Method, req.RequestURI, req.Proto, respCode, respStatus)
 }
 
@@ -77,13 +95,11 @@ func main() {
 	flag.Parse()
 	if *mqURIFlag == "" {
 		usage()
-	} else {
-		http.HandleFunc("/", MyServer)
-		log.Printf("Starting server on port %d.", *portFlag)
-		err := http.ListenAndServe(fmt.Sprintf("%s:%d", *addrFlag, *portFlag), nil)
-		if err != nil {
-			log.Fatal("ListenAndServe: ", err)
-		}
 	}
-
+    http.HandleFunc("/", MyServer)
+    log.Printf("Starting server on %s:%d.", *addrFlag, *portFlag)
+    err := http.ListenAndServe(fmt.Sprintf("%s:%d", *addrFlag, *portFlag), nil)
+    if err != nil {
+        log.Fatal("ListenAndServe: ", err)
+    }
 }
