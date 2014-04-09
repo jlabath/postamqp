@@ -72,7 +72,6 @@ func MyServer(w http.ResponseWriter, req *http.Request) {
 	var err error
     respCode := http.StatusNotImplemented
     respStatus := "sorry"
-    log.Printf("method %s", req.Method)
 	if req.Method == "POST" || req.Method == "PUT" || req.Method == "PATCH" {
 		err = processRequest(req)
         if err != nil {
